@@ -1,4 +1,5 @@
 import pytest
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -29,7 +30,8 @@ def test_added_to_cart(browser, base_url, wait):
     product_name = first_card.find_element(By.CSS_SELECTOR, 'h4 a').text
 
     add_button = first_card.find_element(By.CSS_SELECTOR, 'button[formaction*="checkout/cart.add"]')
-    browser.execute_script("arguments[0].click();", add_button)
+    actions = ActionChains(browser)
+    actions.move_to_element(add_button).click().perform()
 
     success_message = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '.alert-success')))
     assert "Success: You have added" in success_message.text, "Сообщение об успешном добавлении товара не появилось"
