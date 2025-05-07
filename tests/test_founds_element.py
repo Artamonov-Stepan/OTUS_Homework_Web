@@ -1,50 +1,66 @@
-from selenium.webdriver.common.by import By
+from page_objects.admin_page import AdminPage
+from page_objects.catalog_page import CatalogPage
+from page_objects.main_page import MainPage
+from page_objects.product_page import ProductPage
+from page_objects.registration_page import RegistrationPage
+
 
 def test_administration_page(browser, base_url, wait):
-    browser.get(base_url + "/administration")
-    assert "Administration" in browser.title
-    browser.find_element(By.XPATH, "//*[text()=' Please enter your login details.']")
-    browser.find_element(By.ID, "input-password")
-    browser.find_element(By.CSS_SELECTOR, 'button[class="btn btn-primary"]')
-    browser.find_element(By.CLASS_NAME, "card-body")
-    browser.find_element(By.PARTIAL_LINK_TEXT, "OpenCart")
+    admin_page = AdminPage(browser, wait)
+    admin_page.open_admin_page(base_url)
+    assert admin_page.find_browser_title(), (
+        "Заголовок страницы не содержит 'Administration'"
+    )
+    admin_page.find_card_name()
+    admin_page.find_card_body()
+    admin_page.find_login_button()
+    admin_page.find_password_field()
+    admin_page.find_link()
 
 
 def test_registration_page(browser, base_url, wait):
-    browser.get(base_url + "/index.php?route=account/register")
-    assert "Register Account" in browser.title
-    browser.find_element(By.XPATH, "//*[text()='Register Account']")
-    browser.find_element(By.ID, "form-register")
-    browser.find_element(By.NAME, "password")
-    browser.find_element(By.CSS_SELECTOR, 'input[type="checkbox"]')
-    browser.find_element(By.PARTIAL_LINK_TEXT, "Shopping Cart")
+    registration_page = RegistrationPage(browser, wait)
+    registration_page.open_register_page(base_url)
+    assert registration_page.find_browser_title(), (
+        "Заголовок страницы не содержит 'Register Account'"
+    )
+    registration_page.find_card_name()
+    registration_page.find_card_body()
+    registration_page.find_password_field()
+    registration_page.find_check_box()
+    registration_page.find_link()
 
 
 def test_main_page(browser, base_url, wait):
-    browser.get(base_url + "/en-gb?route=common/home")
-    assert "Your Store" in browser.title
-    browser.find_element(By.XPATH, "//*[text()='Featured']")
-    browser.find_element(By.ID, "alert")
-    browser.find_element(By.CSS_SELECTOR, 'button[class="navbar-toggler"]')
-    browser.find_element(By.CLASS_NAME, "row")
-    browser.find_element(By.PARTIAL_LINK_TEXT, "Cart")
+    main_page = MainPage(browser, wait)
+    main_page.open_main_page(base_url)
+    assert main_page.find_browser_title(), "Заголовок страницы не содержит 'Your Store'"
+    main_page.find_card_name()
+    main_page.find_alert()
+    main_page.find_menu()
+    main_page.find_header()
+    main_page.find_cart_link()
 
 
 def test_catalog_page(browser, base_url, wait):
-    browser.get(base_url + "/en-gb/catalog/desktops")
-    assert "Desktops" in browser.title
-    browser.find_element(By.XPATH, "//*[text()='MacBook Air']")
-    browser.find_element(By.ID, "compare-total")
-    browser.find_element(By.CSS_SELECTOR, 'div[class="dropdown"]')
-    browser.find_element(By.CLASS_NAME, "btn-primary")
-    browser.find_element(By.PARTIAL_LINK_TEXT, "Mac")
+    catalog_page = CatalogPage(browser, wait)
+    catalog_page.open_catalog_page(base_url)
+    assert catalog_page.find_browser_title(), (
+        "Заголовок страницы не содержит 'Laptops & Notebooks'"
+    )
+    catalog_page.find_product_name()
+    catalog_page.find_compare_total()
+    catalog_page.find_currency_menu()
+    catalog_page.find_compare_button()
+    catalog_page.find_group_item()
 
 
 def test_product_page(browser, base_url, wait):
-    browser.get(base_url + "/en-gb/product/desktops/canon-eos-5d")
-    assert "sdf" in browser.title
-    browser.find_element(By.XPATH, "//*[text()='Add to Cart']")
-    browser.find_element(By.ID, "button-cart")
-    browser.find_element(By.CSS_SELECTOR, 'img[class="img-thumbnail mb-3"]')
-    browser.find_element(By.CLASS_NAME, "price-new")
-    browser.find_element(By.PARTIAL_LINK_TEXT, "Desktops")
+    product_page = ProductPage(browser, wait)
+    product_page.open_product_page(base_url)
+    assert product_page.find_product_page(), "Заголовок страницы не содержит 'sdf'"
+    product_page.find_product_image()
+    product_page.find_product_price()
+    product_page.find_breadcrumb()
+    product_page.find_add_button()
+    product_page.find_card_head()
