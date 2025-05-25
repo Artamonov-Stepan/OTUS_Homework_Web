@@ -40,7 +40,7 @@ class RegistrationPage(BasePage):
     def find_password_field(self):
         return self.get_element(self.PASSWORD_INPUT)
 
-    @allure.step("Ищу POLICY_CHECK")
+    @allure.step("Ищу Privacy Policy")
     def find_check_box(self):
         return self.get_element(self.POLICY_CHECK)
 
