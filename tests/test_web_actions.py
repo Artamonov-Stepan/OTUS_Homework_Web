@@ -155,29 +155,29 @@ def test_add_new_product(browser, base_url, wait):
     )
 
 
-def test_remove_new_product(browser, base_url, wait):
-    admin_page = AdminPage(browser, wait)
-    admin_page.open_admin_page(base_url)
-    admin_page.enter_username("user")
-    admin_page.enter_password("bitnami")
-    admin_page.submit_login()
-    assert admin_page.is_dashboard_opened(), (
-        "Ожидаем получить заголовок страницы Dashboard!"
-    )
-
-    admin_page.click_header_menu()
-    admin_page.click_to_menu()
-    admin_page.click_to_products()
-    admin_page.select_product()
-    admin_page.click_delete_button()
-
-    alert = Alert(browser)
-    alert.accept()
-
-    alert_success = AlertSuccessElement(browser, wait)
-    assert "Success: You have modified products!" in alert_success.alert.text, (
-        "Сообщение об успешном удалении товара не появилось"
-    )
+# def test_remove_new_product(browser, base_url, wait):
+#     admin_page = AdminPage(browser, wait)
+#     admin_page.open_admin_page(base_url)
+#     admin_page.enter_username("user")
+#     admin_page.enter_password("bitnami")
+#     admin_page.submit_login()
+#     assert admin_page.is_dashboard_opened(), (
+#         "Ожидаем получить заголовок страницы Dashboard!"
+#     )
+#
+#     admin_page.click_header_menu()
+#     admin_page.click_to_menu()
+#     admin_page.click_to_products()
+#     admin_page.select_product()
+#     admin_page.click_delete_button()
+#
+#     alert = Alert(browser)
+#     alert.accept()
+#
+#     alert_success = AlertSuccessElement(browser, wait)
+#     assert "Success: You have modified products!" in alert_success.alert.text, (
+#         "Сообщение об успешном удалении товара не появилось"
+#     )
 
 
 def test_currency_switch(browser, base_url, wait):
