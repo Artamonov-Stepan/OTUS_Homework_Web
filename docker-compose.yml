@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+
+  mariadb:
+    image: docker.io/bitnami/mariadb:11.2
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_USER=bn_opencart
+      - MARIADB_DATABASE=bitnami_opencart
+    ports:
+      - '3306:3306'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  phpadmin:
+    image: 'phpmyadmin/phpmyadmin:latest'
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_PORT=3306
+      - PMA_USER=bn_opencart
+    ports:
+      - '${PHPADMIN_PORT}:80'
+
+  opencart:
+    image: agridyaev/opencart:4.0.2-3-debian-12-r33
+    ports:
+      - '${OPENCART_PORT}:8080'
+      - '443:8443'
+    environment:
+      - OPENCART_HOST=${LOCAL_IP}:${OPENCART_PORT}
+      - OPENCART_DATABASE_HOST=mariadb
+      - OPENCART_DATABASE_PORT_NUMBER=3306
+      - OPENCART_DATABASE_USER=bn_opencart
+      - OPENCART_DATABASE_NAME=bitnami_opencart
+      - ALLOW_EMPTY_PASSWORD=yes
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  selenoid:
+    image: aerokube/selenoid:latest-release
+    container_name: selenoid
+    ports:
+      - "4445:4444"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock" 
+      - "./browsers.json:/etc/selenoid/browsers.json:ro"
+    environment:
+      - TZ=Europe/Moscow
+    depends_on:
+      opencart:
+        condition: service_healthy 
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:4444/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    image: aerokube/selenoid-ui:latest-release
+    container_name: selenoid-ui
+    ports:
+      - "8090:8080" 
+    environment:
+      - SELENOID_URL=http://selenoid:4444
+      - TZ=Europe/Moscow
+    depends_on:
+      selenoid:
+        condition: service_healthy
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    depends_on:
+      opencart:
+        condition: service_healthy
+      selenoid:
+        condition: service_healthy
+    environment:
+      - SELENOID_HOST=http://selenoid:4444/wd/hub
+      - OPENCART_URL=http://opencart:8080
+    networks:
+      - default
+    stdin_open: true
+    tty: true
+
+networks:
+  default:
+    external:
+      name: selenoid

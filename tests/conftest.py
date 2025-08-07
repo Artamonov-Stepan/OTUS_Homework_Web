@@ -5,30 +5,30 @@ import json
 import os
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
-from selenium.webdriver.chromium.options import ChromiumOptions
-from selenium.webdriver.chromium.service import ChromiumService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FFOptions
 from selenium.webdriver.edge.options import Options as MEOptions
-from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 
+# Настройка логирования в stdout (лучше для Docker)
 logging.basicConfig(
-    filename="logs/app.log",
-    level=logging.WARNING,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler()  # Пишем в консоль
+    ]
 )
-
 
 def pytest_addoption(parser):
     parser.addoption("--browser", help="Browser to run tests", default="chrome")
     parser.addoption("--headless", action="store_true", help="Activate headless mode")
-    parser.addoption("--remote", action="store_true", help="Run tests on Selenoid")
-    parser.addoption("--browser-version", help="Browser version for Selenoid", default="128.0")
-    parser.addoption("--enable-vnc", action="store_true", help="Enable VNC for Selenoid")
-    parser.addoption("--enable-video", action="store_true", help="Enable video recording")
-    parser.addoption("--drivers", help="Drivers storage", default=r"C:\Users\glazg\Downloads\Drivers")
-    parser.addoption("--base_url", help="Base application url", default="192.168.0.7:8081")
-    parser.addoption("--selenoid-url", help="Selenoid hub URL", default="http://localhost:4444/wd/hub")
+    parser.addoption("--remote", action="store_true", help="Run tests on Selenoid", default=True)
+    parser.addoption("--browser-version", help="Browser version for Selenoid", default="118.0")
+    parser.addoption("--enable-vnc", action="store_true", help="Enable VNC for Selenoid", default=True)
+    parser.addoption("--enable-video", action="store_true", help="Enable video recording", default=True)
+    parser.addoption("--drivers", help="Drivers storage", default="/drivers")  # Заглушка
+    parser.addoption("--base_url", help="Base application url", default="opencart:8080")
+    parser.addoption("--selenoid-url", help="Selenoid hub URL", default="http://selenoid:4444/wd/hub")
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -41,8 +41,8 @@ def pytest_runtest_makereport(item, call):
             item.status = 'failed'
             driver = getattr(item, "_driver", None)
             if driver is not None:
-                screenshot_path = os.path.join(os.getcwd(), "screenshots", f"{item.name}_failure.png")
-                os.makedirs(os.path.dirname(screenshot_path), exist_ok=True)
+                screenshot_path = os.path.join("screenshots", f"{item.name}_failure.png")
+                os.makedirs("screenshots", exist_ok=True)
                 driver.get_screenshot_as_file(screenshot_path)
                 allure.attach.file(screenshot_path, name="Failure Screenshot",
                                    attachment_type=allure.attachment_type.PNG)
@@ -52,7 +52,10 @@ def pytest_runtest_makereport(item, call):
 
 @pytest.fixture(scope="session")
 def base_url(request):
-    return "http://" + request.config.getoption("--base_url")
+    url = request.config.getoption("--base_url")
+    if not url.startswith("http"):
+        url = "http://" + url
+    return url
 
 
 @pytest.fixture
@@ -65,24 +68,28 @@ def _create_remote_driver(request, browser_name):
 
     if browser_name == "chrome":
         options = ChromeOptions()
-        options.browser_version = request.config.getoption("--browser-version")
     elif browser_name == "firefox":
         options = FFOptions()
-        options.browser_version = request.config.getoption("--browser-version")
     elif browser_name == "edge":
         options = MEOptions()
-        options.browser_version = request.config.getoption("--browser-version")
+    else:
+        raise ValueError(f"Unsupported browser: {browser_name}")
 
+    # Установка версии браузера
+    options.browser_version = request.config.getoption("--browser-version")
+
+    # Headless
     if request.config.getoption("--headless"):
         if browser_name == "firefox":
             options.add_argument("--headless")
         else:
             options.add_argument("headless=new")
 
+    # Selenoid capabilities
     options.set_capability("selenoid:options", {
         "enableVNC": request.config.getoption("--enable-vnc"),
         "enableVideo": request.config.getoption("--enable-video"),
-        "name": request.node.name,
+        "name": request.node.name,  # ✅ Теперь request доступен
         "sessionTimeout": "15m"
     })
 
@@ -95,6 +102,7 @@ def _create_remote_driver(request, browser_name):
 
 
 def _create_local_driver(request, browser_name, drivers_storage):
+    # В Docker-сборке этот путь не используется, но оставим для локального запуска
     if browser_name == "chrome":
         options = ChromeOptions()
         if request.config.getoption("--headless"):
@@ -109,22 +117,11 @@ def _create_local_driver(request, browser_name, drivers_storage):
         options = MEOptions()
         if request.config.getoption("--headless"):
             options.add_argument("headless=new")
-        driver = webdriver.Edge(
-            service=ChromiumService(
-                executable_path=f"{drivers_storage}/msedgedriver.exe"
-            ),
-            options=options,
-        )
-    elif browser_name == "yandex":
-        options = ChromiumOptions()
-        if request.config.getoption("--headless"):
-            options.add_argument("headless=new")
-        driver = webdriver.Chrome(
-            options=options,
-            service=ChromiumService(
-                executable_path=f"{drivers_storage}/yandexdriver.exe"
-            ),
-        )
+        # Упрощённо: предполагаем, что драйвер в PATH
+        driver = webdriver.Edge(options=options)
+    else:
+        raise ValueError(f"Unsupported browser: {browser_name}")
+
     return driver
 
 
@@ -133,19 +130,13 @@ def browser(request):
     browser_name = request.config.getoption("--browser")
     drivers_storage = request.config.getoption("--drivers")
 
-    # Преобразуем короткие имена браузеров в стандартные
     browser_mapping = {
-        "ch": "chrome",
-        "chrome": "chrome",
-        "ff": "firefox",
-        "firefox": "firefox",
-        "me": "edge",
-        "edge": "edge",
-        "ya": "yandex",
-        "yandex": "yandex"
+        "ch": "chrome", "chrome": "chrome",
+        "ff": "firefox", "firefox": "firefox",
+        "me": "edge", "edge": "edge"
     }
 
-    standard_browser_name = browser_mapping.get(browser_name, "chrome")
+    standard_browser_name = browser_mapping.get(browser_name.lower(), "chrome")
 
     if request.config.getoption("--remote"):
         driver = _create_remote_driver(request, standard_browser_name)
@@ -154,14 +145,15 @@ def browser(request):
 
     logging.info(f"Starting test: {request.node.name}")
 
+    # Прикрепление capabilities
     allure.attach(
-        name=driver.session_id,
+        name="capabilities",
         body=json.dumps(driver.capabilities, indent=4, ensure_ascii=False),
         attachment_type=allure.attachment_type.JSON
     )
 
-    driver.test_name = request.node.name
-    driver.log_level = logging.WARNING
+    # Сохраняем driver в объекте теста
+    request.node._driver = driver
 
     yield driver
 

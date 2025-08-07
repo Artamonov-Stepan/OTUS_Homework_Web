@@ -1,24 +1,30 @@
-# Устанавка базового образ
+# Установка базового образа
 FROM python:3.12-alpine
 
-# Устанавка рабочего директория внутри контейнера
-# Директорий будет создан если его не было
-# Будет в дальнейшем использоваться как базовый
+# Установка рабочей директории
 WORKDIR /app
 
 # Копирование зависимостей
-# Для того чтобы не пересобирать их каждый раз при сборке образа
 COPY requirements.txt .
 
-# Установка зависимостей
-RUN pip install -U pip
-RUN pip install -r requirements.txt
+# Установка зависимостей + Chromium
+RUN apk add --no-cache \
+    chromium \
+    chromium-chromedriver \
+    tzdata \
+ && pip install --no-cache-dir -U pip \
+ && pip install --no-cache-dir -r requirements.txt \
+ && pip install --no-cache-dir allure-pytest
 
-# Копирование остальных файлов проекта
+# Копирование кода
 COPY . .
 
-ENV CHROME_BIN=/usr/bin/chromium
+# Переменные окружения для Chromium
+ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV CHROMEDRIVER_PATH=/usr/lib/chromium/chromedriver
 
-# Запуск тестов
-CMD ["pytest"]
+# Создание папок
+RUN mkdir -p screenshots logs
+
+# Запуск тестов с параметрами по умолчанию для Docker
+CMD ["pytest", "--remote", "--browser=chrome", "--enable-vnc", "--enable-video", "-v", "--alluredir=allure-results"]
