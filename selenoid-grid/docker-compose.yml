@@ -1,0 +1,29 @@
+version: '3'
+services:
+  selenoid:
+    image: aerokube/selenoid:latest-release
+    container_name: selenoid
+    ports:
+      - "4445:4444"
+    volumes:
+      - "//var/run/docker.sock:/var/run/docker.sock"
+      - "./browsers.json:/etc/selenoid/browsers.json:ro"
+    environment:
+      - TZ=Europe/Moscow
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:4444/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  selenoid-ui:
+    image: aerokube/selenoid-ui:latest-release
+    container_name: selenoid-ui
+    ports:
+      - "8090:8080"
+    environment:
+      - SELENOID_URL=http://selenoid:4444
+      - TZ=Europe/Moscow
+    depends_on:
+      selenoid:
+        condition: service_healthy
