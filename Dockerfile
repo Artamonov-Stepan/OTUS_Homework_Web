@@ -4,8 +4,8 @@ FROM python:3.12-alpine
 # Установка рабочей директории
 WORKDIR /app
 
-# Копирование зависимостей
-COPY requirements.txt .
+# Копирование кода
+COPY . .
 
 # Установка зависимостей + Chromium
 RUN apk add --no-cache \
@@ -15,9 +15,6 @@ RUN apk add --no-cache \
  && pip install --no-cache-dir -U pip \
  && pip install --no-cache-dir -r requirements.txt \
  && pip install --no-cache-dir allure-pytest
-
-# Копирование кода
-COPY . .
 
 # Переменные окружения для Chromium
 ENV CHROME_BIN=/usr/bin/chromium-browser
